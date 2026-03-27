@@ -1,0 +1,22 @@
+import * as React from 'react'
+
+import { cn } from '@/lib/utils'
+
+type BadgeProps = React.HTMLAttributes<HTMLSpanElement> & {
+  variant?: 'default' | 'outline'
+}
+
+const Badge = ({ className, variant = 'default', ...props }: BadgeProps) => {
+  return (
+    <span
+      className={cn(
+        'inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium',
+        variant === 'default' ? 'bg-amber-100 text-amber-700' : 'border border-slate-200 bg-white text-slate-500',
+        className,
+      )}
+      {...props}
+    />
+  )
+}
+
+export { Badge }

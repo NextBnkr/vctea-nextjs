@@ -15,8 +15,8 @@ import { updateFeedback } from '@/service'
 import Clipboard from '@/app/components/base/icons/line/clipboard'
 import RefreshCcw01 from '@/app/components/base/icons/line/refresh-ccw-01'
 import CodeEditor from '@/app/components/result/workflow/code-editor'
-import WorkflowProcessItem from '@/app/components/result/workflow/workflow-process'
 import { CodeLanguage } from '@/types/app'
+import InvestorResultCard from '../cards/investor-result-card'
 
 export type IGenerationItemProps = {
   isWorkflow?: boolean
@@ -57,7 +57,6 @@ export const copyIcon = (
 
 const GenerationItem: FC<IGenerationItemProps> = ({
   isWorkflow,
-  workflowProcessData,
   className,
   isError,
   onRetry,
@@ -114,6 +113,55 @@ const GenerationItem: FC<IGenerationItemProps> = ({
     return res
   })()
 
+  const normalizeList = (value: any) => {
+    if (Array.isArray(value))
+      return value.filter(Boolean).map(item => `${item}`.trim()).filter(Boolean)
+    if (typeof value === 'string') {
+      return value
+        .split('\n')
+        .map(item => item.replace(/^[-•\s]+/, '').trim())
+        .filter(Boolean)
+    }
+    return []
+  }
+
+  const pick = (obj: Record<string, any>, keys: string[]) => {
+    const key = Object.keys(obj || {}).find(item => keys.includes(item))
+    return key ? obj[key] : undefined
+  }
+
+  const toCard = (item: any, index: number) => {
+    if (!item || typeof item !== 'object')
+      return null
+    return {
+      investorName: pick(item, ['机构', '机构名称', 'investor', 'investor_name']) || `机构 ${index + 1}`,
+      conclusion: pick(item, ['匹配结论', '结论', 'conclusion']) || '',
+      confidence: pick(item, ['置信度', 'confidence']) || '',
+      highlights: normalizeList(pick(item, ['匹配亮点', '亮点', 'highlights'])),
+      concerns: normalizeList(pick(item, ['需关注事项', '关注事项', 'concerns'])),
+      supplements: normalizeList(pick(item, ['建议补充信息', '补充信息', 'supplements'])),
+    }
+  }
+
+  const getCards = () => {
+    if (!content || typeof content === 'string')
+      return []
+    if (Array.isArray(content))
+      return content.map((item, index) => toCard(item, index)).filter(Boolean)
+    if (typeof content === 'object') {
+      const direct = toCard(content, 0)
+      if (direct && (direct.conclusion || direct.highlights.length || direct.concerns.length))
+        return [direct]
+      const firstArray = Object.values(content).find(item => Array.isArray(item)) as any[] | undefined
+      if (firstArray)
+        return firstArray.map((item, index) => toCard(item, index)).filter(Boolean)
+    }
+    return []
+  }
+
+  const cardDataList = getCards() as any[]
+  const contentLength = typeof content === 'string' ? content.length : JSON.stringify(content || '').length
+
   // regeneration clear child
   useEffect(() => {
     if (isLoading)
@@ -145,16 +193,20 @@ const GenerationItem: FC<IGenerationItemProps> = ({
             }
             <div className='flex'>
               <div className='grow w-0'>
-                {workflowProcessData && (
-                  <WorkflowProcessItem grayBg hideInfo data={workflowProcessData} expand={workflowProcessData.expand} />
-                )}
                 {isError && (
                   <div className='text-gray-400 text-sm'>{t('app.generation.batchFailed.outputPlaceholder')}</div>
                 )}
-                {!isError && (typeof content === 'string') && (
+                {!isError && cardDataList.length > 0 && (
+                  <div className='grid grid-cols-1 gap-3 md:grid-cols-2'>
+                    {cardDataList.map((item, index) => (
+                      <InvestorResultCard key={`${item.investorName}-${index}`} data={item} />
+                    ))}
+                  </div>
+                )}
+                {!isError && cardDataList.length === 0 && (typeof content === 'string') && (
                   <Markdown content={content} />
                 )}
-                {!isError && (typeof content !== 'string') && (
+                {!isError && cardDataList.length === 0 && (typeof content !== 'string') && (
                   <CodeEditor
                     readOnly
                     title={<div />}
@@ -240,7 +292,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                   </>
                 )}
               </div>
-              <div className='text-xs text-gray-500'>{content?.length} {t('common.unit.char')}</div>
+              <div className='text-xs text-gray-500'>{contentLength} {t('common.unit.char')}</div>
             </div>
 
           </div>

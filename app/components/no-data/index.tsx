@@ -10,9 +10,9 @@ const NoData: FC<INoDataProps> = () => {
   const { t } = useTranslation()
   return (
     <div className='flex flex-col h-full w-full justify-center items-center'>
-      <DocumentTextIcon className='text-gray-300 w-12 h-12 mb-3' />
+      <DocumentTextIcon className='mb-3 h-12 w-12 text-amber-300' />
       <div
-        className='text-gray-300 text-xs leading-3'
+        className='text-center text-xs leading-5 text-slate-400'
       >
         {t('app.generation.noData')}
       </div>

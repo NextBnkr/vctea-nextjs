@@ -13,6 +13,8 @@ import type { Feedbacktype, PromptConfig, VisionFile, VisionSettings, WorkflowPr
 import { NodeRunningStatus, TransferMethod, WorkflowRunningStatus } from '@/types/app'
 import Loading from '@/app/components/base/loading'
 import { sleep } from '@/utils'
+import WorkflowProgress from './workflow-progress'
+import { getProgressText } from '@/app/constants/workflow-progress-map'
 
 export type IResultProps = {
   isWorkflow: boolean
@@ -69,6 +71,9 @@ const Result: FC<IResultProps> = ({
     doSetWorkflowProccessData(data)
   }
   const getWorkflowProccessData = () => workflowProcessDataRef.current
+  const [workflowProgress, setWorkflowProgress] = useState(0)
+  const [workflowStepText, setWorkflowStepText] = useState('')
+  const [workflowRunning, setWorkflowRunning] = useState(false)
 
   const { notify } = Toast
   const isNoData = !completionRes
@@ -149,6 +154,9 @@ const Result: FC<IResultProps> = ({
       rating: null,
     })
     setCompletionRes('')
+    setWorkflowProgress(0)
+    setWorkflowStepText('')
+    setWorkflowRunning(false)
 
     const res: string[] = []
     let tempMessageId = ''
@@ -163,6 +171,7 @@ const Result: FC<IResultProps> = ({
       await sleep(1000 * 60) // 1min timeout
       if (!isEnd) {
         setResponsingFalse()
+        setWorkflowRunning(false)
         onCompleted(getCompletionRes(), taskId, false)
         isTimeout = true
       }
@@ -179,6 +188,9 @@ const Result: FC<IResultProps> = ({
               tracing: [],
               expand: false,
             })
+            setWorkflowProgress(15)
+            setWorkflowStepText('正在校验输入信息')
+            setWorkflowRunning(true)
             setResponsingFalse()
           },
           onNodeStarted: ({ data }) => {
@@ -190,6 +202,10 @@ const Result: FC<IResultProps> = ({
                 expand: true,
               } as any)
             }))
+            const tracingCount = getWorkflowProccessData()?.tracing?.length || 1
+            const nextProgress = Math.min(90, 15 + tracingCount * 12)
+            setWorkflowProgress(nextProgress)
+            setWorkflowStepText(getProgressText(data?.node_type, (data as any)?.title))
           },
           onNodeFinished: ({ data }) => {
             setWorkflowProccessData(produce(getWorkflowProccessData()!, (draft) => {
@@ -211,6 +227,7 @@ const Result: FC<IResultProps> = ({
             if (data.error) {
               notify({ type: 'error', message: data.error })
               setResponsingFalse()
+              setWorkflowRunning(false)
               onCompleted(getCompletionRes(), taskId, false)
               isEnd = true
               return
@@ -225,6 +242,9 @@ const Result: FC<IResultProps> = ({
             else
               setCompletionRes(data.outputs[Object.keys(data.outputs)[0]])
             setResponsingFalse()
+            setWorkflowProgress(100)
+            setWorkflowStepText('已完成匹配评估')
+            setWorkflowRunning(false)
             setMessageId(tempMessageId)
             onCompleted(getCompletionRes(), taskId, true)
             isEnd = true
@@ -298,6 +318,9 @@ const Result: FC<IResultProps> = ({
             </div>)
           : (
             <>
+              {isWorkflow && workflowRunning && (
+                <WorkflowProgress progress={workflowProgress} text={workflowStepText} />
+              )}
               {(isNoData && !workflowProcessData)
                 ? <NoData />
                 : renderTextGenerationRes()

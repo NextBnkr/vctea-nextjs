@@ -1,7 +1,7 @@
 import { type NextRequest } from 'next/server'
 import { CompletionClient } from 'dify-client'
 import { v4 } from 'uuid'
-import { API_KEY, API_URL, APP_ID } from '@/config'
+import { API_KEY, API_URL, APP_ID, PREFILL_API_KEY } from '@/config'
 
 const userPrefix = `user_${APP_ID}:`
 
@@ -19,3 +19,4 @@ export const setSession = (sessionId: string) => {
 }
 
 export const client = new CompletionClient(API_KEY, API_URL || undefined)
+export const prefillClient = new CompletionClient(PREFILL_API_KEY, API_URL || undefined)
