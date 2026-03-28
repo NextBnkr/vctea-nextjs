@@ -5,11 +5,11 @@ export const PREFILL_API_KEY = `${process.env.NEXT_PUBLIC_PREFILL_APP_KEY || pro
 export const API_URL = `${process.env.NEXT_PUBLIC_API_URL}`
 export const IS_WORKFLOW = `${process.env.NEXT_PUBLIC_APP_TYPE_WORKFLOW}` === 'true'
 export const APP_INFO: AppInfo = {
-  title: 'Text Generator APP',
-  description: 'App description',
+  title: 'VC查',
+  description: '找投资人前先来VC查',
   copyright: '',
   privacy_policy: '',
-  default_language: 'en-US',
+  default_language: 'en',
 }
 
 export const API_PREFIX = '/api'
