@@ -42,7 +42,36 @@ const FORM_DRAFT_KEY = 'vccha_form_draft_v1'
 const PENDING_ORG_KEY = 'vccha_pending_org_query'
 const structureOptions = ['纯内资', '红筹', 'VIE']
 const runwayOptions = ['0-3个月', '3-6个月', '6-12个月', '12个月以上']
+const stageOptions = ['种子轮', '天使轮', 'Pre-A', 'A轮', 'A+轮', 'Pre-B', 'B轮', 'B+轮', 'C轮及以后']
 const normalizeRunwayText = (value: string) => value.replace(/\s+/g, '').replace(/个?月/g, '个月').replace(/～|—|－|至/g, '-').toLowerCase()
+const normalizeStageText = (value: string) => value.replace(/\s+/g, '').replace(/融资|轮次/g, '').replace(/[（）()]/g, '').toLowerCase()
+const normalizeStageOption = (value: any) => {
+  const source = `${value || ''}`.trim()
+  if (!source)
+    return ''
+  if (stageOptions.includes(source))
+    return source
+  const normalized = normalizeStageText(source)
+  if (normalized.includes('seed') || normalized.includes('种子'))
+    return '种子轮'
+  if (normalized.includes('angel') || normalized.includes('天使'))
+    return '天使轮'
+  if (normalized.includes('prea') || normalized.includes('pre-a') || normalized.includes('prea'))
+    return 'Pre-A'
+  if (normalized.includes('a+'))
+    return 'A+轮'
+  if (normalized === 'a' || normalized.includes('a轮'))
+    return 'A轮'
+  if (normalized.includes('preb') || normalized.includes('pre-b'))
+    return 'Pre-B'
+  if (normalized.includes('b+'))
+    return 'B+轮'
+  if (normalized === 'b' || normalized.includes('b轮'))
+    return 'B轮'
+  if (normalized.includes('c') || normalized.includes('d') || normalized.includes('e') || normalized.includes('f') || normalized.includes('ipo') || normalized.includes('上市前'))
+    return 'C轮及以后'
+  return ''
+}
 const normalizeRunwayOption = (value: any) => {
   const source = `${value || ''}`.trim()
   if (!source)
@@ -149,14 +178,23 @@ const IntakePage = () => {
       try {
         const parsedDraft = JSON.parse(draftRaw)
         if (parsedDraft && typeof parsedDraft === 'object') {
-          setValues({ ...initialValues, ...parsedDraft })
+          const mergedValues = { ...initialValues, ...parsedDraft }
+          setValues({
+            ...mergedValues,
+            stage: normalizeStageOption(mergedValues.stage),
+          })
           return
         }
       }
       catch { }
     }
-    if (parsedHistory.length)
-      setValues({ ...initialValues, ...parsedHistory[0].values })
+    if (parsedHistory.length) {
+      const mergedValues = { ...initialValues, ...parsedHistory[0].values }
+      setValues({
+        ...mergedValues,
+        stage: normalizeStageOption(mergedValues.stage),
+      })
+    }
   }, [])
 
   useEffect(() => {
@@ -272,7 +310,7 @@ const IntakePage = () => {
             setValues(prev => ({
               ...prev,
               track: prev.track || `${outputs.track || ''}`.trim(),
-              stage: prev.stage || `${outputs.stage || ''}`.trim(),
+              stage: prev.stage || normalizeStageOption(`${outputs.stage || ''}`.trim()),
               traction: prev.traction || `${outputs.traction || metricTexts || ''}`.trim(),
               runway: prev.runway || normalizedRunway,
               resourceNeeds: prev.resourceNeeds || [fundUsage, askForInvestor].filter(Boolean).join('；'),
@@ -403,7 +441,10 @@ const IntakePage = () => {
                     </div>
                     <div className='space-y-1.5'>
                       <label className='text-sm font-medium text-slate-900'>融资轮次</label>
-                      <Input value={values.stage} onChange={e => setValues(prev => ({ ...prev, stage: e.target.value }))} placeholder='例如：种子轮、天使轮、Pre-A' className='border-white/40 bg-white/70 ring-1 ring-white/70' />
+                      <select value={values.stage} onChange={e => setValues(prev => ({ ...prev, stage: e.target.value }))} className={cn(selectClassName, 'focus:border-slate-200 focus:ring-slate-200')}>
+                        <option value=''>请选择轮次</option>
+                        {stageOptions.map(option => <option key={option} value={option}>{option}</option>)}
+                      </select>
                     </div>
                   </div>
                   <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
