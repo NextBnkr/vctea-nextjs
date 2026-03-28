@@ -24,12 +24,6 @@ type FormValues = {
   resourceNeeds: string
 }
 
-type HistoryItem = {
-  id: string
-  savedAt: number
-  values: FormValues
-}
-
 type StepItem = {
   title: string
   subtitle: string
@@ -37,8 +31,6 @@ type StepItem = {
   requiredKeys: (keyof FormValues)[]
 }
 
-const FORM_HISTORY_KEY = 'vccha_form_history_v1'
-const FORM_DRAFT_KEY = 'vccha_form_draft_v1'
 const PENDING_ORG_KEY = 'vccha_pending_org_query'
 const structureOptions = ['纯内资', '红筹', 'VIE']
 const runwayOptions = ['0-3个月', '3-6个月', '6-12个月', '12个月以上']
@@ -145,7 +137,6 @@ const IntakePage = () => {
   const searchParams = useSearchParams()
   const [error, setError] = useState('')
   const [values, setValues] = useState<FormValues>(initialValues)
-  const [history, setHistory] = useState<HistoryItem[]>([])
   const [currentStep, setCurrentStep] = useState(0)
   const [prefillStatus, setPrefillStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
   const [prefillSignature, setPrefillSignature] = useState('')
@@ -162,44 +153,8 @@ const IntakePage = () => {
 
   useEffect(() => {
     document.title = 'VC查｜AI FA 融资匹配向导'
-    const historyRaw = localStorage.getItem(FORM_HISTORY_KEY)
-    let parsedHistory: HistoryItem[] = []
-    if (historyRaw) {
-      try {
-        const parsed = JSON.parse(historyRaw)
-        if (Array.isArray(parsed))
-          parsedHistory = parsed
-      }
-      catch { }
-    }
-    setHistory(parsedHistory)
-    const draftRaw = localStorage.getItem(FORM_DRAFT_KEY)
-    if (draftRaw) {
-      try {
-        const parsedDraft = JSON.parse(draftRaw)
-        if (parsedDraft && typeof parsedDraft === 'object') {
-          const mergedValues = { ...initialValues, ...parsedDraft }
-          setValues({
-            ...mergedValues,
-            stage: normalizeStageOption(mergedValues.stage),
-          })
-          return
-        }
-      }
-      catch { }
-    }
-    if (parsedHistory.length) {
-      const mergedValues = { ...initialValues, ...parsedHistory[0].values }
-      setValues({
-        ...mergedValues,
-        stage: normalizeStageOption(mergedValues.stage),
-      })
-    }
+    setValues(initialValues)
   }, [])
-
-  useEffect(() => {
-    localStorage.setItem(FORM_DRAFT_KEY, JSON.stringify(values))
-  }, [values])
 
   useEffect(() => {
     const orgFromQuery = searchParams.get('org')?.trim() || ''
@@ -227,17 +182,6 @@ const IntakePage = () => {
     return requiredLabelMap[missingKey] || '必填项'
   }
 
-  const saveHistorySnapshot = () => {
-    const snapshot: FormValues = { ...values, targetInvestors: [...values.targetInvestors] }
-    setHistory((prev) => {
-      const deduped = prev.filter(item => JSON.stringify(item.values) !== JSON.stringify(snapshot))
-      const next = [{ id: `${Date.now()}`, savedAt: Date.now(), values: snapshot }, ...deduped].slice(0, 6)
-      localStorage.setItem(FORM_HISTORY_KEY, JSON.stringify(next))
-      return next
-    })
-    localStorage.removeItem(FORM_DRAFT_KEY)
-  }
-
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
@@ -246,7 +190,6 @@ const IntakePage = () => {
       setError(`请补充「${missing}」，我们会据此给出更准确的匹配结果`)
       return
     }
-    saveHistorySnapshot()
     const normalizedInputs: Record<string, any> = {
       sai_dao: values.track.trim(),
       rong_zilun_ci: values.stage,
@@ -407,9 +350,9 @@ const IntakePage = () => {
                       </div>
                       <div className='mt-1 text-xs text-slate-500'>系统正在推断赛道、轮次、预期投资完成时间与资源诉求</div>
                       <div className='mt-3 space-y-2'>
-                        <div className='h-2 w-full animate-pulse rounded-full bg-white/90'></div>
-                        <div className='h-2 w-5/6 animate-pulse rounded-full bg-white/85'></div>
-                        <div className='h-2 w-2/3 animate-pulse rounded-full bg-white/80'></div>
+                        <div className='intake-shimmer-line h-2 w-full rounded-full'></div>
+                        <div className='intake-shimmer-line h-2 w-5/6 rounded-full'></div>
+                        <div className='intake-shimmer-line h-2 w-2/3 rounded-full'></div>
                       </div>
                     </div>
                   )}

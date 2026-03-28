@@ -8,23 +8,6 @@ import { Input } from '@/components/ui/input'
 import type { InstitutionSuggestionResponse } from '@/service'
 import { fetchInstitutionSuggestions } from '@/service'
 
-type FormValues = {
-  projectName?: string
-  oneLineSummary?: string
-  track?: string
-  stage?: string
-  fundingAmount?: string
-  targetInvestors?: string[]
-  location?: string
-  structure?: string
-  traction?: string
-  teamBackground?: string
-  runway?: string
-  resourceNeeds?: string
-}
-
-const FORM_HISTORY_KEY = 'vccha_form_history_v1'
-const FORM_DRAFT_KEY = 'vccha_form_draft_v1'
 const PENDING_ORG_KEY = 'vccha_pending_org_query'
 const placeholderScenes = [
   '查查红杉中国的口碑和约谈反馈',
@@ -37,51 +20,6 @@ const TYPE_INTERVAL_PUNCT = 150
 const HOLD_FULL = 2600
 const DELETE_INTERVAL = 42
 const HOLD_EMPTY = 420
-
-const safeParse = (raw: string | null) => {
-  if (!raw)
-    return null
-  try {
-    return JSON.parse(raw)
-  }
-  catch {
-    return null
-  }
-}
-
-const readLatestProfile = (): FormValues | null => {
-  const draft = safeParse(localStorage.getItem(FORM_DRAFT_KEY))
-  if (draft && typeof draft === 'object')
-    return draft as FormValues
-  const history = safeParse(localStorage.getItem(FORM_HISTORY_KEY))
-  if (Array.isArray(history) && history.length && history[0]?.values)
-    return history[0].values as FormValues
-  return null
-}
-
-const hasCoreProfile = (profile: FormValues | null) => {
-  if (!profile)
-    return false
-  return !!(profile.oneLineSummary?.trim() && profile.fundingAmount?.trim() && profile.teamBackground?.trim())
-}
-
-const toWorkflowInputs = (profile: FormValues, orgName: string) => {
-  const mergedOrgs = [orgName, ...(profile.targetInvestors || [])]
-  const dedupedOrgs = Array.from(new Set(mergedOrgs.map(item => `${item || ''}`.trim()).filter(Boolean)))
-  return {
-    sai_dao: `${profile.track || ''}`.trim(),
-    rong_zilun_ci: `${profile.stage || ''}`.trim(),
-    jin_e: `${profile.fundingAmount || ''}`.trim(),
-    cheng_shu_du: `${profile.traction || ''}`.trim(),
-    mi_ao_shu: `${profile.oneLineSummary || ''}`.trim(),
-    location: `${profile.location || ''}`.trim(),
-    jia_gou: `${profile.structure || ''}`.trim(),
-    beijing: `${profile.teamBackground || ''}`.trim(),
-    run_wa_y: `${profile.runway || ''}`.trim(),
-    xu_qiu: `${profile.resourceNeeds || ''}`.trim(),
-    ji_gou: dedupedOrgs.join('、'),
-  }
-}
 
 const HomePage = () => {
   const router = useRouter()
@@ -216,19 +154,6 @@ const HomePage = () => {
       return
     }
     setError('')
-    setRedirecting(true)
-    const profile = readLatestProfile()
-    if (hasCoreProfile(profile)) {
-      sessionStorage.setItem('vccha_run_payload', JSON.stringify({
-        inputs: toWorkflowInputs(profile as FormValues, trimmedQuery),
-        title: 'VC查',
-        description: `机构查询：${trimmedQuery}`,
-        createdAt: Date.now(),
-      }))
-      router.push('/result')
-      return
-    }
-    setRedirecting(false)
     setPendingOrgName(trimmedQuery)
     setShowInterceptModal(true)
     sessionStorage.setItem(PENDING_ORG_KEY, trimmedQuery)
@@ -333,7 +258,7 @@ const HomePage = () => {
                     setShowTips(true)
                 }}
                 placeholder=''
-                className='h-14 rounded-2xl border-white/45 bg-white/80 px-4 text-base ring-1 ring-white/80'
+                className='h-14 rounded-2xl border-white/45 bg-white/80 px-4 text-base ring-1 ring-white/80 shadow-[0_2px_10px_rgba(15,23,42,0.06)]'
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
                     e.preventDefault()

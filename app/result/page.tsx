@@ -1,8 +1,6 @@
 'use client'
 import React, { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { ChevronDownIcon } from '@heroicons/react/24/outline'
-import { usePwaInstall } from '@/app/components/pwa-install-provider'
 import { sendWorkflowMessage } from '@/service'
 
 type SavedPayload = {
@@ -117,17 +115,15 @@ const toCards = (content: any) => {
 }
 
 const ResultPage = () => {
-  const router = useRouter()
   const [payload, setPayload] = useState<SavedPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [progress, setProgress] = useState(10)
   const [stepText, setStepText] = useState('正在初始化评估')
   const [rawOutput, setRawOutput] = useState<any>(null)
-  const [nodes, setNodes] = useState<string[]>([])
   const [expandedCard, setExpandedCard] = useState<number | null>(0)
-  const [installing, setInstalling] = useState(false)
-  const { canInstall, isStandalone, isIOS, supportSW, install } = usePwaInstall()
+  const [progressCollapsed, setProgressCollapsed] = useState(false)
+  const [progressHidden, setProgressHidden] = useState(false)
 
   const cards = useMemo(() => {
     return toCards(rawOutput).sort((a, b) => a.rank - b.rank)
@@ -139,7 +135,8 @@ const ResultPage = () => {
     setProgress(10)
     setStepText('正在校验输入信息')
     setRawOutput(null)
-    setNodes([])
+    setProgressCollapsed(false)
+    setProgressHidden(false)
 
     await sendWorkflowMessage(
       { inputs: currentPayload.inputs },
@@ -150,7 +147,6 @@ const ResultPage = () => {
         },
         onNodeStarted: ({ data }) => {
           const nodeLabel = data?.extras?.title || data?.node_type || '节点执行中'
-          setNodes(prev => [...prev, nodeLabel])
           setProgress(prev => Math.min(92, prev + 8))
           setStepText(`正在执行：${nodeLabel}`)
         },
@@ -178,16 +174,38 @@ const ResultPage = () => {
 
   useEffect(() => {
     document.title = 'VC查｜评估结果'
-    const raw = sessionStorage.getItem('vccha_run_payload')
-    if (!raw) {
-      setLoading(false)
-      setError('未找到提交内容，请先返回填写表单')
+    const timer = window.setTimeout(() => {
+      const raw = sessionStorage.getItem('vccha_run_payload')
+      if (!raw) {
+        setLoading(false)
+        setError('未找到提交内容，请先返回填写表单')
+        return
+      }
+      try {
+        const parsed = JSON.parse(raw) as SavedPayload
+        setPayload(parsed)
+        run(parsed)
+      }
+      catch {
+        setLoading(false)
+        setError('提交内容格式异常，请返回重新提交')
+      }
+    }, 0)
+    return () => window.clearTimeout(timer)
+  }, [])
+
+  useEffect(() => {
+    if (loading || !!error) {
+      setProgressCollapsed(false)
+      setProgressHidden(false)
       return
     }
-    const parsed = JSON.parse(raw) as SavedPayload
-    setPayload(parsed)
-    run(parsed)
-  }, [])
+    setProgressCollapsed(true)
+    const timer = window.setTimeout(() => {
+      setProgressHidden(true)
+    }, 500)
+    return () => window.clearTimeout(timer)
+  }, [loading, error])
 
   const renderList = (items: string[], emptyText: string) => {
     if (!items.length)
@@ -204,80 +222,30 @@ const ResultPage = () => {
     )
   }
 
-  const handleInstall = async () => {
-    if (installing || isStandalone || !canInstall)
-      return
-    setInstalling(true)
-    await install()
-    setInstalling(false)
-  }
-
   return (
     <main className='min-h-screen bg-[radial-gradient(1100px_620px_at_22%_-14%,#ffe6a0_0%,rgba(255,230,160,0)_56%),linear-gradient(180deg,#fffef9_0%,#fffdfa_46%,#fff7e9_100%)] px-4 py-6 md:px-8 md:py-8'>
       <div className='mx-auto w-full max-w-[940px] space-y-4'>
         <section className='rounded-[28px] bg-white/58 px-5 py-5 ring-1 ring-white/70 backdrop-blur-md md:px-7 md:py-6'>
           <div className='flex flex-wrap items-start justify-between gap-4'>
             <div className='space-y-2'>
-              <div className='inline-flex items-center rounded-full bg-amber-100/90 px-3 py-1 text-xs font-semibold text-amber-800'>VC查结果页</div>
               <h1 className='text-2xl font-semibold text-slate-900 md:text-3xl'>机构匹配结论</h1>
               <p className='text-sm text-slate-600'>{payload?.title || '本次评估'}</p>
             </div>
-            <div className='flex flex-col items-end gap-2'>
-              {!isStandalone && (
-                <button
-                  type='button'
-                  onClick={handleInstall}
-                  disabled={!canInstall || installing}
-                  className='h-10 rounded-full bg-amber-100 px-4 text-sm font-semibold text-amber-800 ring-1 ring-amber-200/80 transition enabled:hover:bg-amber-50 disabled:opacity-60'
-                >
-                  {installing ? '处理中...' : '安装到桌面'}
-                </button>
-              )}
-              <div className='flex items-center gap-2'>
-                <button
-                  type='button'
-                  onClick={() => router.push('/')}
-                  className='h-10 rounded-full bg-white/75 px-4 text-sm font-medium text-slate-700 ring-1 ring-white/80 transition hover:bg-white'
-                >
-                  返回修改表单
-                </button>
-                <button
-                  type='button'
-                  onClick={() => payload && run(payload)}
-                  className='h-10 rounded-full bg-amber-500 px-4 text-sm font-medium text-white transition-all duration-300 hover:-translate-y-0.5 hover:bg-amber-400'
-                >
-                  重新评估
-                </button>
-              </div>
-              {!isStandalone && (
-                <p className='text-right text-xs text-slate-500'>
-                  建议安装到桌面，后续复访更快。
-                </p>
-              )}
-            </div>
           </div>
 
-          <div className='mt-4 rounded-2xl bg-amber-50/65 px-4 py-3 ring-1 ring-amber-100/70'>
-            <div className='mb-2 flex items-center justify-between text-sm'>
-              <span className='font-medium text-slate-900'>{stepText}</span>
-              <span className='text-slate-600'>{progress}%</span>
-            </div>
-            <div className='h-2 w-full rounded-full bg-white/90'>
-              <div className='h-2 rounded-full bg-amber-500 transition-all duration-500 ease-out' style={{ width: `${progress}%` }}></div>
-            </div>
-            {!!nodes.length && <div className='mt-2 line-clamp-2 text-xs text-slate-500'>{nodes.slice(-3).join(' · ')}</div>}
-            {!isStandalone && (
-              <div className='mt-2 text-xs text-slate-500'>
-                {canInstall
-                  ? '支持一键添加到桌面，方便后续快速查看匹配结果。'
-                  : isIOS
-                    ? 'iPhone/iPad 请在 Safari 点“分享”后选择“添加到主屏幕”。'
-                    : supportSW
-                      ? '若未出现一键安装，可在浏览器菜单中选择“安装应用/添加到桌面”。'
-                      : '当前浏览器暂不支持桌面安装能力。'}
+          {!progressHidden && (
+            <div className={`overflow-hidden transition-all duration-500 ease-in-out ${progressCollapsed ? 'mt-0 max-h-0 -translate-y-1 opacity-0' : 'mt-4 max-h-56 translate-y-0 opacity-100'}`}>
+              <div className='rounded-2xl bg-amber-50/65 px-4 py-3 ring-1 ring-amber-100/70'>
+                <div className='mb-2 flex items-center justify-between text-sm'>
+                  <span className='font-medium text-slate-900'>{stepText}</span>
+                  <span className='text-slate-600'>{progress}%</span>
+                </div>
+                <div className='h-2 w-full rounded-full bg-white/90'>
+                  <div className='h-2 rounded-full bg-amber-500 transition-all duration-500 ease-out' style={{ width: `${progress}%` }}></div>
+                </div>
               </div>
-            )}
-          </div>
+            </div>
+          )}
 
           {error && (
             <div className='mt-4 rounded-2xl bg-rose-50/80 px-3 py-2 text-sm text-rose-700'>{error}</div>
