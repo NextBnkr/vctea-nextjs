@@ -404,8 +404,22 @@ const HomePage = () => {
             <h2 className='relative mt-4 text-[26px] font-semibold leading-tight text-slate-900 md:text-[34px]'>
               请先完善资料
             </h2>
-            <p className='relative mt-3 text-sm leading-7 text-slate-800 md:text-[15px]'>
-              VC 机构侧信息属于高度商业机密，不能公开展示。我们只能基于你补充的项目材料进行分析，返回更贴合你情况的搜索建议与匹配结论。
+            <p className='relative mt-4 space-y-1.5 text-sm leading-8 text-slate-800 md:text-[15px]'>
+              <span className='block'>
+                VC 机构侧信息属于
+                <strong className='font-semibold text-slate-900'>高度商业机密</strong>
+                ，不能公开展示。
+              </span>
+              <span className='block'>
+                我们会基于你补充的
+                <strong className='font-semibold text-slate-900'>项目材料</strong>
+                进行分析，
+              </span>
+              <span className='block'>
+                返回更贴合你情况的搜索建议与
+                <strong className='font-semibold text-slate-900'>匹配结论</strong>
+                。
+              </span>
             </p>
             <div className='relative mt-6'>
               <Button type='button' onClick={goIntakeFromModal} disabled={redirecting} className='h-12 w-full rounded-2xl text-base font-semibold'>

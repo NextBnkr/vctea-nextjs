@@ -42,6 +42,12 @@ resources:
       memorySize: 512
       code: ./
       environmentVariables:
+        NEXT_PUBLIC_APP_ID: 81e1c34f-9f02-464f-961b-d5d26081b646
+        NEXT_PUBLIC_APP_KEY: app-hJ6fDXYneD0wzQRV1kKfsdOM
+        NEXT_PUBLIC_PREFILL_APP_KEY: app-6mt6LDWaEdkB8uuVBr9dkqTA
+        NEXT_PUBLIC_API_URL: https://dify.deepprinter.cn/v1
+        NEXT_PUBLIC_APP_TYPE_WORKFLOW: true
+        NEXT_PUBLIC_SITE_URL: https://fa.deepprinter.cn
         PATH: >-
           /code/node_modules/.bin;/opt/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin:/opt/bin:/code:/code/bin:/var/fc/lang/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin:/opt/bin:/code:/code/bin:/var/fc/lang/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin:/opt/bin:/code:/code/bin:/var/fc/lang/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin:/opt/bin:/code:/code/bin:/var/fc/lang/nodejs20/bin:/usr/local/bin/apache-maven/bin:/usr/local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin:/usr/local/ruby/bin:/opt/bin:/code:/code/bin:/opt/nodejs/node_modules/.bin
         LD_LIBRARY_PATH: /code:/code/lib:/usr/lib:/opt/lib:/usr/local/lib
