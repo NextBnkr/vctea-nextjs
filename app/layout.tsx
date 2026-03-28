@@ -1,5 +1,6 @@
 import type { Viewport } from 'next'
 
+import { PwaInstallProvider } from '@/app/components/pwa-install-provider'
 import { getLocaleOnServer } from '@/i18n/server'
 
 import './styles/globals.css'
@@ -21,9 +22,11 @@ const LocaleLayout = ({
   return (
     <html lang={locale ?? 'en'} className='h-full'>
       <body className='min-h-screen'>
-        <div className='min-h-screen min-w-[300px] overflow-x-hidden'>
-          {children}
-        </div>
+        <PwaInstallProvider>
+          <div className='min-h-screen min-w-[300px] overflow-x-hidden'>
+            {children}
+          </div>
+        </PwaInstallProvider>
       </body>
     </html>
   )

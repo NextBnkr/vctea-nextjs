@@ -1,6 +1,8 @@
 'use client'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { ArrowDownTrayIcon, MagnifyingGlassIcon } from '@heroicons/react/24/outline'
+import { usePwaInstall } from '@/app/components/pwa-install-provider'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import type { InstitutionSuggestionResponse } from '@/service'
@@ -28,6 +30,7 @@ const placeholderScenes = [
   '查查红杉中国的口碑和约谈反馈',
   '查查源码资本今年还有没有出手空间',
   '查查某机构对具身智能是否还在重点关注',
+  '查查XX机构有没有投过你的竞对？',
 ]
 const TYPE_INTERVAL = 78
 const TYPE_INTERVAL_PUNCT = 150
@@ -94,8 +97,13 @@ const HomePage = () => {
   const [placeholderTypedCount, setPlaceholderTypedCount] = useState(0)
   const [placeholderPhase, setPlaceholderPhase] = useState<'typing' | 'hold' | 'deleting' | 'switching'>('typing')
   const [cursorVisible, setCursorVisible] = useState(true)
+  const [installing, setInstalling] = useState(false)
+  const [showInstallModal, setShowInstallModal] = useState(false)
+  const [installModalTitle, setInstallModalTitle] = useState('添加到桌面')
+  const [installModalMessage, setInstallModalMessage] = useState('')
   const searchWrapRef = useRef<HTMLDivElement>(null)
   const trimmedQuery = useMemo(() => query.trim(), [query])
+  const { canInstall, isStandalone, supportSW, install } = usePwaInstall()
 
   useEffect(() => {
     document.title = 'VC查｜机构搜索'
@@ -161,6 +169,7 @@ const HomePage = () => {
     if (!trimmedQuery) {
       setTips([])
       setShowTips(false)
+      setLoadingTips(false)
       return
     }
     let cancelled = false
@@ -231,13 +240,72 @@ const HomePage = () => {
     router.push(`/intake?org=${encodeURIComponent(org)}`)
   }
 
+  const openInstallModal = (title: string, message: string) => {
+    setInstallModalTitle(title)
+    setInstallModalMessage(message)
+    setShowInstallModal(true)
+  }
+
+  const handleInstall = async () => {
+    if (installing || isStandalone)
+      return
+    const ua = navigator.userAgent.toLowerCase()
+    const isEdge = ua.includes('edg/')
+    const isOpera = ua.includes('opr/') || ua.includes('opera')
+    const isChrome = ua.includes('chrome') && !isEdge && !isOpera
+    if (isChrome) {
+      setShowInstallModal(false)
+      setInstalling(true)
+      await install()
+      setInstalling(false)
+      return
+    }
+    if (!canInstall) {
+      const isWeChat = ua.includes('micromessenger')
+      const isMiniProgram = ua.includes('miniprogram')
+      const isWebKit = ua.includes('applewebkit')
+      if (isWeChat || isMiniProgram) {
+        openInstallModal('请先在浏览器打开', '当前在微信环境中，请点击右上角“...”选择“在浏览器打开”，再点击“添加到桌面”。')
+        return
+      }
+      if (isWebKit) {
+        openInstallModal('添加到桌面指引', '请点击浏览器“分享”，再选择“添加到主屏幕”。')
+        return
+      }
+      if (supportSW) {
+        openInstallModal('添加到桌面指引', '请在浏览器菜单中选择“安装应用/添加到桌面”。')
+        return
+      }
+      openInstallModal('当前暂不支持', '当前浏览器暂不支持添加到桌面能力。')
+      return
+    }
+    setShowInstallModal(false)
+    setInstalling(true)
+    await install()
+    setInstalling(false)
+  }
+
   return (
     <main className='min-h-screen bg-[radial-gradient(1200px_680px_at_28%_-18%,#ffe7a4_0%,rgba(255,231,164,0)_56%),linear-gradient(180deg,#fffef9_0%,#fffdfa_42%,#fff8eb_100%)] px-4 pb-10 pt-12 md:px-8 md:pt-16'>
       <div className='mx-auto flex min-h-[70vh] w-full max-w-[920px] flex-col items-center justify-center'>
         <div className='w-full rounded-[30px] bg-white/55 px-5 py-8 ring-1 ring-white/70 backdrop-blur-md md:px-10 md:py-12'>
           <div className='mx-auto max-w-[760px]'>
-            <div className='inline-flex items-center rounded-full bg-amber-100/90 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800'>
-              VC查 · 机构匹配搜索
+            <div className='flex items-center justify-between gap-3'>
+              <div className='inline-flex items-center rounded-full bg-amber-100/90 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800'>
+                VC查 · 机构匹配搜索
+              </div>
+              {!isStandalone && (
+                <Button
+                  type='button'
+                  variant='secondary'
+                  onClick={handleInstall}
+                  disabled={installing}
+                  className='h-8 rounded-full bg-transparent px-2 text-xs font-medium text-slate-500 hover:bg-transparent hover:text-slate-700'
+                >
+                  <ArrowDownTrayIcon className='mr-1 h-3.5 w-3.5' />
+                  {installing ? '处理中...' : '安装到桌面'}
+                </Button>
+              )}
             </div>
             <div
               className='relative mt-4 overflow-hidden rounded-[28px] border border-white/70 bg-white/65 px-5 py-5 shadow-[0_20px_44px_rgba(15,23,42,0.08),inset_0_1px_0_rgba(255,255,255,0.9)] ring-1 ring-white/80 md:px-7 md:py-6'
@@ -246,7 +314,7 @@ const HomePage = () => {
                 className='pointer-events-none absolute -right-10 -top-10 h-28 w-28 animate-[pulse_3.4s_ease-in-out_infinite] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.92),rgba(253,186,116,0.36)_58%,rgba(251,191,36,0.12)_100%)] blur-sm'
               ></div>
               <h1 className='relative text-left text-[28px] font-semibold leading-tight text-slate-900 md:text-[48px]'>
-                <span className='block whitespace-nowrap'>老板，</span>
+                <span className='block whitespace-nowrap'>老师，</span>
                 <span className='block whitespace-nowrap'>今天要谈哪家机构？</span>
               </h1>
             </div>
@@ -257,6 +325,8 @@ const HomePage = () => {
                 onChange={(e) => {
                   setQuery(e.target.value)
                   setShowTips(true)
+                  if (error)
+                    setError('')
                 }}
                 onFocus={() => {
                   if (tips.length)
@@ -296,16 +366,29 @@ const HomePage = () => {
               )}
             </div>
 
-            <div className='mt-5 flex items-center gap-3'>
-              <Button type='button' onClick={goSearch} disabled={redirecting || showInterceptModal} className='min-w-[148px]'>
-                {redirecting ? '处理中...' : '开始查询'}
+            <div className='mt-8 flex flex-col items-center gap-5'>
+              <Button type='button' onClick={goSearch} disabled={redirecting || showInterceptModal} className='flex h-12 w-auto min-w-[140px] items-center justify-center rounded-2xl px-6 text-base font-semibold'>
+                {redirecting
+                  ? '处理中...'
+                  : (
+                    <>
+                      <MagnifyingGlassIcon className='mr-2 h-5 w-5' />
+                      开始查询
+                    </>
+                  )}
               </Button>
-              <Button type='button' variant='secondary' onClick={() => router.push('/intake')} className='min-w-[148px] bg-white/70 text-slate-700 hover:bg-white'>
-                先完善资料
-              </Button>
+              <button
+                type='button'
+                onClick={() => router.push('/intake')}
+                className='block text-center text-sm font-medium leading-none text-slate-500 transition hover:text-slate-700'
+              >
+                想获得更多信息？先完善资料
+              </button>
             </div>
 
-            {loadingTips && <div className='mt-3 text-left text-xs text-slate-500'>正在加载机构候选...</div>}
+            <div className='relative w-full h-0'>
+              {loadingTips && <div className='absolute left-0 top-3 text-left text-xs text-slate-500'>正在加载机构候选...</div>}
+            </div>
             {error && <div className='mt-3 rounded-xl bg-rose-50/85 px-3 py-2 text-sm text-rose-700'>{error}</div>}
 
           </div>
@@ -327,6 +410,27 @@ const HomePage = () => {
             <div className='relative mt-6'>
               <Button type='button' onClick={goIntakeFromModal} disabled={redirecting} className='h-12 w-full rounded-2xl text-base font-semibold'>
                 {redirecting ? '处理中...' : '我知道了，去完善资料'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+      {showInstallModal && (
+        <div className='fixed inset-0 z-[60] flex items-center justify-center bg-[rgba(15,23,42,0.52)] px-4'>
+          <div className='relative w-full max-w-[460px] overflow-hidden rounded-[30px] border border-amber-100 bg-white px-5 py-6 shadow-[0_30px_70px_rgba(15,23,42,0.28)] ring-1 ring-white md:px-7 md:py-7'>
+            <div className='pointer-events-none absolute -right-12 -top-10 h-28 w-28 animate-[pulse_3.4s_ease-in-out_infinite] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.9),rgba(253,186,116,0.34)_58%,rgba(251,191,36,0.12)_100%)] blur-sm'></div>
+            <div className='relative inline-flex items-center rounded-full bg-amber-100/92 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800'>
+              VC查 · 安装说明
+            </div>
+            <h2 className='relative mt-4 text-[24px] font-semibold leading-tight text-slate-900 md:text-[30px]'>
+              {installModalTitle}
+            </h2>
+            <p className='relative mt-3 text-sm leading-7 text-slate-800 md:text-[15px]'>
+              {installModalMessage}
+            </p>
+            <div className='relative mt-6'>
+              <Button type='button' onClick={() => setShowInstallModal(false)} className='h-11 w-full rounded-2xl text-base font-semibold'>
+                我知道了
               </Button>
             </div>
           </div>

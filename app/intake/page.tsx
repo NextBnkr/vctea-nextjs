@@ -367,7 +367,7 @@ const IntakePage = () => {
                         <span className='h-5 w-5 animate-spin rounded-full border-2 border-amber-200 border-t-amber-500'></span>
                         <div className='text-sm font-medium text-slate-800'>正在自动补全信息</div>
                       </div>
-                      <div className='mt-1 text-xs text-slate-500'>系统正在推断赛道、轮次、runway 与资源诉求</div>
+                      <div className='mt-1 text-xs text-slate-500'>系统正在推断赛道、轮次、预期投资完成时间与资源诉求</div>
                       <div className='mt-3 space-y-2'>
                         <div className='h-2 w-full animate-pulse rounded-full bg-white/90'></div>
                         <div className='h-2 w-5/6 animate-pulse rounded-full bg-white/85'></div>
@@ -408,7 +408,7 @@ const IntakePage = () => {
                   </div>
                   <div className='grid grid-cols-1 gap-4 md:grid-cols-2'>
                     <div className='space-y-1.5'>
-                      <label className='text-sm font-medium text-slate-900'>资金 runway</label>
+                      <label className='text-sm font-medium text-slate-900'>预期投资完成时间</label>
                       <select value={values.runway} onChange={e => setValues(prev => ({ ...prev, runway: e.target.value }))} className={cn(selectClassName, 'focus:border-slate-200 focus:ring-slate-200')}>
                         <option value=''>请选择</option>
                         {runwayOptions.map(option => <option key={option} value={option}>{option}</option>)}
