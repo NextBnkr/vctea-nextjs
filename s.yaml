@@ -50,7 +50,7 @@ resources:
           app-6mt6LDWaEdkB8uuVBr9dkqTA
         NEXT_PUBLIC_API_URL: >-
           https://dify.deepprinter.cn/v1
-        NEXT_PUBLIC_APP_TYPE_WORKFLOW: >-
+        NEXT_PUBLIC_APP_TYPE_WORKFLOW: >- # string not bool
           true
         NEXT_PUBLIC_SITE_URL: >- 
           https://fa.deepprinter.cn
