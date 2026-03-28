@@ -1,5 +1,5 @@
 'use client'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -85,13 +85,16 @@ const HomePage = () => {
   const [query, setQuery] = useState('')
   const [error, setError] = useState('')
   const [tips, setTips] = useState<string[]>([])
+  const [showTips, setShowTips] = useState(false)
   const [loadingTips, setLoadingTips] = useState(false)
   const [redirecting, setRedirecting] = useState(false)
-  const [showGuide, setShowGuide] = useState(false)
+  const [showInterceptModal, setShowInterceptModal] = useState(false)
+  const [pendingOrgName, setPendingOrgName] = useState('')
   const [placeholderIndex, setPlaceholderIndex] = useState(0)
   const [placeholderTypedCount, setPlaceholderTypedCount] = useState(0)
   const [placeholderPhase, setPlaceholderPhase] = useState<'typing' | 'hold' | 'deleting' | 'switching'>('typing')
   const [cursorVisible, setCursorVisible] = useState(true)
+  const searchWrapRef = useRef<HTMLDivElement>(null)
   const trimmedQuery = useMemo(() => query.trim(), [query])
 
   useEffect(() => {
@@ -157,6 +160,7 @@ const HomePage = () => {
   useEffect(() => {
     if (!trimmedQuery) {
       setTips([])
+      setShowTips(false)
       return
     }
     let cancelled = false
@@ -181,7 +185,23 @@ const HomePage = () => {
     }
   }, [trimmedQuery])
 
+  useEffect(() => {
+    const onPointerDown = (event: MouseEvent) => {
+      if (!searchWrapRef.current)
+        return
+      if (searchWrapRef.current.contains(event.target as Node))
+        return
+      setShowTips(false)
+    }
+    document.addEventListener('mousedown', onPointerDown)
+    return () => {
+      document.removeEventListener('mousedown', onPointerDown)
+    }
+  }, [])
+
   const goSearch = () => {
+    if (showInterceptModal)
+      return
     if (!trimmedQuery) {
       setError('请输入要查询的投资机构')
       return
@@ -199,11 +219,16 @@ const HomePage = () => {
       router.push('/result')
       return
     }
-    setShowGuide(true)
+    setRedirecting(false)
+    setPendingOrgName(trimmedQuery)
+    setShowInterceptModal(true)
     sessionStorage.setItem(PENDING_ORG_KEY, trimmedQuery)
-    setTimeout(() => {
-      router.push(`/intake?org=${encodeURIComponent(trimmedQuery)}`)
-    }, 900)
+  }
+
+  const goIntakeFromModal = () => {
+    const org = pendingOrgName || trimmedQuery
+    setRedirecting(true)
+    router.push(`/intake?org=${encodeURIComponent(org)}`)
   }
 
   return (
@@ -226,10 +251,17 @@ const HomePage = () => {
               </h1>
             </div>
 
-            <div className='relative mt-8'>
+            <div ref={searchWrapRef} className='relative mt-8'>
               <Input
                 value={query}
-                onChange={e => setQuery(e.target.value)}
+                onChange={(e) => {
+                  setQuery(e.target.value)
+                  setShowTips(true)
+                }}
+                onFocus={() => {
+                  if (tips.length)
+                    setShowTips(true)
+                }}
                 placeholder=''
                 className='h-14 rounded-2xl border-white/45 bg-white/80 px-4 text-base ring-1 ring-white/80'
                 onKeyDown={(e) => {
@@ -241,18 +273,21 @@ const HomePage = () => {
               />
               {!trimmedQuery && (
                 <div className='pointer-events-none absolute inset-y-0 left-4 right-4 flex items-center text-base text-slate-400'>
-                  <span className='select-none tracking-[0.01em] text-slate-400/95'>{placeholderScenes[placeholderIndex].slice(0, placeholderTypedCount)}</span>
-                  <span className={`ml-0.5 inline-block h-5 w-[2px] rounded-full bg-amber-300/90 shadow-[0_0_8px_rgba(251,191,36,0.45)] transition-opacity duration-150 ${cursorVisible ? 'opacity-100' : 'opacity-20'}`}></span>
+                  <span className='inline-block max-w-[calc(100%-6px)] select-none truncate whitespace-nowrap align-middle tracking-[0.01em] text-slate-400/95'>{placeholderScenes[placeholderIndex].slice(0, placeholderTypedCount)}</span>
+                  <span className={`ml-0.5 inline-block h-5 w-[2px] shrink-0 rounded-full bg-amber-300/90 shadow-[0_0_8px_rgba(251,191,36,0.45)] transition-opacity duration-150 ${cursorVisible ? 'opacity-100' : 'opacity-20'}`}></span>
                 </div>
               )}
-              {!!tips.length && (
+              {showTips && !!tips.length && (
                 <div className='absolute left-0 right-0 top-[62px] z-20 rounded-2xl bg-white/92 p-2 text-left shadow-[0_16px_34px_rgba(15,23,42,0.08)] ring-1 ring-white/90 backdrop-blur'>
                   {tips.map(item => (
                     <button
                       key={item}
                       type='button'
                       className='block w-full rounded-xl px-3 py-2 text-sm text-slate-700 transition hover:bg-amber-50/80'
-                      onClick={() => setQuery(item)}
+                      onClick={() => {
+                        setQuery(item)
+                        setShowTips(false)
+                      }}
                     >
                       {item}
                     </button>
@@ -262,7 +297,7 @@ const HomePage = () => {
             </div>
 
             <div className='mt-5 flex items-center gap-3'>
-              <Button type='button' onClick={goSearch} disabled={redirecting} className='min-w-[148px]'>
+              <Button type='button' onClick={goSearch} disabled={redirecting || showInterceptModal} className='min-w-[148px]'>
                 {redirecting ? '处理中...' : '开始查询'}
               </Button>
               <Button type='button' variant='secondary' onClick={() => router.push('/intake')} className='min-w-[148px] bg-white/70 text-slate-700 hover:bg-white'>
@@ -273,15 +308,30 @@ const HomePage = () => {
             {loadingTips && <div className='mt-3 text-left text-xs text-slate-500'>正在加载机构候选...</div>}
             {error && <div className='mt-3 rounded-xl bg-rose-50/85 px-3 py-2 text-sm text-rose-700'>{error}</div>}
 
-            {showGuide && (
-              <div className='mt-4 rounded-2xl bg-sky-50/75 px-4 py-3 text-left ring-1 ring-sky-100/80'>
-                <div className='text-sm font-medium text-slate-900'>我们会将你的资料按商业机密处理</div>
-                <div className='mt-1 text-xs leading-5 text-slate-600'>为了给出可信结论，需要基于你真实上报的团队与融资情况。正在为你进入资料填写页...</div>
-              </div>
-            )}
           </div>
         </div>
       </div>
+      {showInterceptModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center bg-[rgba(15,23,42,0.52)] px-4'>
+          <div className='relative w-full max-w-[500px] overflow-hidden rounded-[30px] border border-amber-100 bg-white px-5 py-6 shadow-[0_30px_70px_rgba(15,23,42,0.28)] ring-1 ring-white md:px-7 md:py-7'>
+            <div className='pointer-events-none absolute -right-12 -top-10 h-28 w-28 animate-[pulse_3.4s_ease-in-out_infinite] rounded-full bg-[radial-gradient(circle_at_30%_30%,rgba(255,255,255,0.9),rgba(253,186,116,0.34)_58%,rgba(251,191,36,0.12)_100%)] blur-sm'></div>
+            <div className='relative inline-flex items-center rounded-full bg-amber-100/92 px-3 py-1 text-xs font-semibold tracking-wide text-amber-800'>
+              VC查 · 资料保密说明
+            </div>
+            <h2 className='relative mt-4 text-[26px] font-semibold leading-tight text-slate-900 md:text-[34px]'>
+              请先完善资料
+            </h2>
+            <p className='relative mt-3 text-sm leading-7 text-slate-800 md:text-[15px]'>
+              VC 机构侧信息属于高度商业机密，不能公开展示。我们只能基于你补充的项目材料进行分析，返回更贴合你情况的搜索建议与匹配结论。
+            </p>
+            <div className='relative mt-6'>
+              <Button type='button' onClick={goIntakeFromModal} disabled={redirecting} className='h-12 w-full rounded-2xl text-base font-semibold'>
+                {redirecting ? '处理中...' : '我知道了，去完善资料'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   )
 }
