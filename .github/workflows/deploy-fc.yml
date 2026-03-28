@@ -17,6 +17,6 @@ jobs:
       - run: npm ci
       - run: npm run build
       - run: npm install -g @serverless-devs/s@3
-      - run: s config add --AccountID ${{ secrets.ALIYUN_ACCOUNT_ID }} --AccessKeyID ${{ secrets.ALIYUN_ACCESS_KEY_ID }} --AccessKeySecret ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }} -a default -f
+      - run: s config add --AccessKeyID ${{ secrets.AccessKeyID }} --AccessKeySecret ${{ secrets.AccessKeySecret }} -a default -f
       - run: s build
       - run: s deploy -y --use-local
