@@ -1,3 +1,18 @@
+const { execSync } = require('node:child_process')
+const { version } = require('./package.json')
+
+const getGitCommit = () => {
+  try {
+    return execSync('git rev-parse --short HEAD').toString().trim()
+  }
+  catch {
+    return ''
+  }
+}
+
+const gitCommit = getGitCommit()
+const appVersion = gitCommit ? `v${version}-${gitCommit}` : `v${version}`
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
@@ -15,6 +30,9 @@ const nextConfig = {
   typescript: {
     // https://nextjs.org/docs/api-reference/next.config.js/ignoring-typescript-errors
     ignoreBuildErrors: true,
+  },
+  env: {
+    NEXT_PUBLIC_APP_VERSION: appVersion,
   },
 }
 
